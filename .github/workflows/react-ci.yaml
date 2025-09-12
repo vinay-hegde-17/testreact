@@ -1,3 +1,7 @@
+permissions:
+  contents: write
+  packages: write
+
 name: React CI/CD
 
 on:
@@ -23,48 +27,68 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Run tests with coverage
-        run: npm test -- --ci --reporters=default --reporters=jest-junit
+      - name: Run tests
+        run: |
+          mkdir -p test-results
+          npm test -- --watchAll=false --ci --json --outputFile=test-results/results.json
         env:
           CI: true
-          JEST_JUNIT_OUTPUT: junit.xml
 
       - name: Upload test results
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-report
-          path: junit.xml
+          name: test-results
+          path: test-results
 
   merge-to-main:
     needs: test
     runs-on: ubuntu-latest
     if: success()
     steps:
-      - name: Checkout dev branch
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: dev
           fetch-depth: 0
+          ref: dev
 
       - name: Configure git
         run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Merge dev -> main
         run: |
           git checkout main
-          git merge dev --no-edit
+          git merge --ff-only dev || git merge dev --no-ff -m "Auto-merge dev into main [skip ci]"
           git push origin main
 
-      - name: Sync main -> dev
+  sync-main-to-dev:
+    needs: merge-to-main
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: dev
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch main branch
+        run: git fetch origin main:main
+
+      - name: Merge main back to dev
         run: |
           git checkout dev
-          git merge main --no-edit
+          git merge main --no-ff -m "Sync main into dev [skip ci]"
           git push origin dev
 
   build:
-    needs: merge-to-main
+    needs: sync-main-to-dev
     runs-on: ubuntu-latest
     steps:
       - name: Checkout main
