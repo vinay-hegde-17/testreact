@@ -13,6 +13,7 @@ on:
       - main
 
 jobs:
+  #1️ Test on Dev Branch
   test:
     runs-on: ubuntu-latest
     steps:
@@ -27,44 +28,80 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Run tests
+      - name: Run tests (Dev)
         run: |
           mkdir -p test-results
-          npm test -- --watchAll=false --ci --json --outputFile=test-results/results.json
+          npm test -- --watchAll=false --ci
         env:
           CI: true
 
-      - name: Upload test results
+      - name: Upload JSON test results (Dev)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-results
-          path: test-results
+          name: test-report-dev-json
+          path: test-results/*.json
 
+      - name: Upload HTML test report (Dev)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report-dev-html
+          path: html-report/report.html
+
+  #2️ Merge Dev -> Main
   merge-to-main:
     needs: test
     runs-on: ubuntu-latest
     if: success()
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
           ref: dev
-
-      - name: Configure git
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-      - name: Merge dev -> main
-        run: |
+          fetch-depth: 0
+      - run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
           git checkout main
-          git merge --ff-only dev || git merge dev --no-ff -m "Auto-merge dev into main [skip ci]"
+          git merge dev --no-edit
           git push origin main
 
-  sync-main-to-dev:
+  #3️ Test on Main after merge
+  test-main:
     needs: merge-to-main
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - run: npm install
+
+      - name: Run tests (Main)
+        run: npm test -- --ci --reporters=default --reporters=jest-junit
+        env:
+          CI: true
+          JEST_JUNIT_OUTPUT: junit-main.xml
+
+      - name: Upload JUnit test report (Main)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report-main-xml
+          path: junit-main.xml
+
+      - name: Upload HTML test report (Main)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report-main-html
+          path: html-report/report.html
+
+  #4 Sync Main -> Dev (only after test-main passes)
+  sync-main-to-dev:
+    needs: [test-main]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -86,6 +123,40 @@ jobs:
           git checkout dev
           git merge main --no-ff -m "Sync main into dev [skip ci]"
           git push origin dev
+
+  #5️ Linting job
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - run: npm install
+      - run: npm run lint
+
+  #6️ Security audit job
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - run: npm install
+      - run: npm audit --audit-level=high
+
+  #7️ Bundle size check
+  bundle-size:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - run: npm install
+      - run: npm run build
+      - run: npx size-limit
 
   build:
     needs: sync-main-to-dev
