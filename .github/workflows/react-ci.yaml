@@ -29,23 +29,16 @@ jobs:
         run: npm install
 
       - name: Run tests (Dev)
-        run: npm test -- --watchAll=false --ci
+        run: npm test -- --watchAll=false --ci --json --outputFile=test-results.json
         env:
           CI: true
 
-      - name: Upload HTML test report
+      - name: Upload JSON test results (Dev)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-report-html
-          path: html-report/report.html
-
-      - name: Upload JUnit test report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-report-xml
-          path: test-results/junit.xml
+          name: test-results-dev
+          path: test-results.json
 
   #2️ Merge Dev -> Main
   merge-to-main:
@@ -78,24 +71,16 @@ jobs:
       - run: npm install
 
       - name: Run tests (Main)
-        run: npm test -- --ci --watchAll=false
+        run: npm test -- --ci --watchAll=false --json --outputFile=test-results-main.json
         env:
           CI: true
-          JEST_JUNIT_OUTPUT: junit-main.xml
 
-      - name: Upload JUnit test report (Main)
+      - name: Upload JSON test results (Main)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-report-main-xml
-          path: junit-main.xml
-
-      - name: Upload HTML test report (Main)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-report-main-html
-          path: html-report/report.html
+          name: test-results-main
+          path: test-results-main.json
 
   #4 Sync Main -> Dev (only after test-main passes)
   sync-main-to-dev:
