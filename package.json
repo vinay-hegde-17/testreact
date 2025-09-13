@@ -40,18 +40,5 @@
     "jest": "^27.5.1",
     "jest-html-reporters": "^3.1.7",
     "jest-junit": "^16.0.0"
-  },
-  "jest": {
-    "reporters": [
-      "default",
-      [
-        "jest-html-reporters",
-        {
-          "publicPath": "./html-report",
-          "filename": "report.html",
-          "expand": true
-        }
-      ]
-    ]
   }
 }

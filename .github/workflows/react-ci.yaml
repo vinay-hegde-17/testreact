@@ -29,25 +29,23 @@ jobs:
         run: npm install
 
       - name: Run tests (Dev)
-        run: |
-          mkdir -p test-results
-          npm test -- --watchAll=false --ci
+        run: npm test -- --watchAll=false --ci
         env:
           CI: true
 
-      - name: Upload JSON test results (Dev)
+      - name: Upload HTML test report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-report-dev-json
-          path: test-results/*.json
-
-      - name: Upload HTML test report (Dev)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-report-dev-html
+          name: test-report-html
           path: html-report/report.html
+
+      - name: Upload JUnit test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report-xml
+          path: test-results/junit.xml
 
   #2️ Merge Dev -> Main
   merge-to-main:
@@ -80,7 +78,7 @@ jobs:
       - run: npm install
 
       - name: Run tests (Main)
-        run: npm test -- --ci --reporters=default --reporters=jest-junit
+        run: npm test -- --ci --watchAll=false
         env:
           CI: true
           JEST_JUNIT_OUTPUT: junit-main.xml
