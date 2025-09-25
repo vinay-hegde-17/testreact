@@ -16,9 +16,7 @@ const ItemDialog = ({ open, handleClose, handleSave, initialData }) => {
   }, [initialData]);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    console.log(e.target);
-    
+    const { name, value } = e.target;    
     setFormData((prev) => ({
       ...prev,
       [name]: value,

@@ -88,29 +88,21 @@ describe("LoadData Component", () => {
     });
   });
 
-  test("clicking edit button calls handler with correct id", async () => {
+  test("clicking edit button opens dialog with correct item", async () => {
     fetchAllItems.mockResolvedValue(mockItems);
-    const logSpy = jest.spyOn(console, "log").mockImplementation(() => {});
-    
+
     render(<LoadData />);
 
-    // Wait for loading to complete and data to be rendered
-    await waitFor(() => {
-      expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
-    });
+    // Wait for table
+    await waitFor(() =>
+      expect(screen.queryByRole("progressbar")).not.toBeInTheDocument()
+    );
 
-    // Wait for edit buttons to be available using a more specific approach
-    await waitFor(() => {
-      // Find buttons that contain EditIcon (more specific than generic edit label)
-      const editIcons = screen.getAllByTestId('EditIcon');
-      expect(editIcons).toHaveLength(2);
-      
-      // Click the parent button of the first EditIcon
-      const firstEditButton = editIcons[0].closest('button');
-      fireEvent.click(firstEditButton);
-    });
+    // Click edit
+    const editIcons = screen.getAllByTestId("EditIcon");
+    fireEvent.click(editIcons[0].closest("button"));
 
-    expect(logSpy).toHaveBeenCalledWith("Edit item with ID:", "1");
-    logSpy.mockRestore();
+    // Now check if dialog opened with correct data
+    expect(await screen.findByDisplayValue(mockItems[0].name)).toBeInTheDocument();
   });
-});
+  });
